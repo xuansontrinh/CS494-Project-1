@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -47,26 +45,26 @@ public class SearchScreen extends JFrame {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-//		EventQueue.invokeLater(new Runnable() {
-//			public void run() {
-//				try {
-//					SearchScreen frame = new SearchScreen();
-//					frame.setVisible(true);
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		});
+		// EventQueue.invokeLater(new Runnable() {
+		// public void run() {
+		// try {
+		// SearchScreen frame = new SearchScreen();
+		// frame.setVisible(true);
+		// } catch (Exception e) {
+		// e.printStackTrace();
+		// }
+		// }
+		// });
 	}
 
 	/**
 	 * Create the frame.
 	 */
-	public SearchScreen(int type, JFrame parent) {
+	public SearchScreen(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut, int type, JFrame parent) {
 		setResizable(false);
 		_type = type;
 		_parent = parent;
-		
+
 		addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentHidden(ComponentEvent e) {
@@ -82,43 +80,37 @@ public class SearchScreen extends JFrame {
 		lblQuery = new JLabel("Query");
 		lblQuery.setBounds(10, 11, 51, 14);
 		contentPane.add(lblQuery);
-		
+
 		searchBox = new JTextField();
 		searchBox.setBounds(71, 8, 614, 20);
 		contentPane.add(searchBox);
 		searchBox.setColumns(10);
-		
+
 		btnSearch = new JButton("Search");
 		btnSearch.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				btnSearch.setEnabled(false);
-				loadImages(searchBox.getText());
+				loadImages(in, out, commandOut, searchBox.getText());
 			}
 		});
 		btnSearch.setBounds(695, 7, 89, 23);
 		contentPane.add(btnSearch);
-		
+
 		pane = new JPanel();
 		JScrollPane scrollPane = new JScrollPane(pane);
 		pane.setLayout(new GridLayout(0, 4, 0, 0));
 		scrollPane.setBounds(10, 36, 774, 524);
 		contentPane.add(scrollPane);
 	}
-	
-	private void loadImages(String query) {
-		String hostName = "127.0.0.1";
-		int portNumber = 9000;
 
-		try (Socket server = new Socket(hostName, portNumber);
-				ObjectInputStream in = new ObjectInputStream(server.getInputStream());
-				ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream());
-				PrintWriter commandOut = new PrintWriter(server.getOutputStream(), true);) {
+	private void loadImages(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut, String query) {
 
-			if (_type == 0)
-				commandOut.println("FetchImages");
-			else if (_type == 1)
-				commandOut.println("Search");
+		if (_type == 0)
+			commandOut.println("FetchImages");
+		else if (_type == 1)
+			commandOut.println("Search");
 
+		try {
 			if (in.readBoolean()) {
 				commandOut.println(query);
 
@@ -126,7 +118,7 @@ public class SearchScreen extends JFrame {
 				if (!Files.exists(Paths.get(path)))
 					Files.createDirectories(Paths.get(path));
 				try {
-					
+
 					int count = 0;
 					while (in.readBoolean()) {
 						Image img = (Image) in.readObject();
@@ -137,32 +129,34 @@ public class SearchScreen extends JFrame {
 						JLabel image = new JLabel("");
 						image.setBounds(0, 0, 100, 100);
 						image.setHorizontalAlignment(JLabel.CENTER);
-						
+
 						String fileName = "Query/" + query + "/" + img.get_imageName();
-						ImageIcon i = new ImageIcon(fileName); // create the image icon
-						java.awt.Image tmp = i.getImage(); // get the image to transform
+						ImageIcon i = new ImageIcon(fileName); // create the
+																// image icon
+						java.awt.Image tmp = i.getImage(); // get the image to
+															// transform
 						double ratio = (double) image.getHeight() / tmp.getHeight(null);
 						tmp = tmp.getScaledInstance((int) (tmp.getWidth(null) * ratio), image.getHeight(),
 								java.awt.Image.SCALE_SMOOTH); // scale the image
-						
+
 						image.setIcon(new ImageIcon(tmp)); // set image icon
-						
+
 						pane.add(image);
 
 						out.writeBoolean(true);
 						out.flush();
-						
+
 						++count;
 					}
-					
+
 					JOptionPane message = new JOptionPane();
 					message.setMessage(count + " images found.");
 					JDialog dialog = message.createDialog(null, "Alert");
 					dialog.setVisible(true);
-					
+
 					pane.validate();
 					btnSearch.setEnabled(true);
-					
+
 				} catch (Exception e) {
 					System.err.println(e);
 				}
@@ -170,13 +164,9 @@ public class SearchScreen extends JFrame {
 			} else {
 				System.out.println("Server not accepting fetch request.");
 			}
-
-		} catch (UnknownHostException e) {
-			System.err.println("Don't know about host " + hostName);
-			System.exit(1);
 		} catch (IOException e) {
-			System.err.println("Couldn't get I/O for the connection to " + hostName);
-			System.exit(1);
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 }

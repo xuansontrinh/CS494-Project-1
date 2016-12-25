@@ -6,6 +6,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
+import java.io.*;
 
 public class HomeScreen extends JFrame {
 
@@ -35,7 +36,8 @@ public class HomeScreen extends JFrame {
 	/**
 	 * Create the frame.
 	 */
-	public HomeScreen(String username) {
+	public HomeScreen(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut, String username) {
+		this.setTitle(username);
 		setResizable(false);
 		_username = username;
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -49,7 +51,7 @@ public class HomeScreen extends JFrame {
 		JFrame that = this;
 		btnUploadImage.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				UploadScreen us = new UploadScreen(_username, that);
+				UploadScreen us = new UploadScreen(in, out, commandOut, _username, that);
 				us.setVisible(true);
 				setVisible(false);
 			}
@@ -60,7 +62,7 @@ public class HomeScreen extends JFrame {
 		JButton btnViewUploadedImages = new JButton("View Uploaded Images");
 		btnViewUploadedImages.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				ViewUploadedScreen vus = new ViewUploadedScreen(_username, that);
+				ViewUploadedScreen vus = new ViewUploadedScreen(in, out, commandOut, _username, that);
 				vus.setVisible(true);
 				setVisible(false);
 			}
@@ -71,7 +73,7 @@ public class HomeScreen extends JFrame {
 		JButton btnNewButton = new JButton("Search Images by Theme");
 		btnNewButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				SearchScreen ss = new SearchScreen(1, that);
+				SearchScreen ss = new SearchScreen(in, out, commandOut, 1, that);
 				ss.setVisible(true);
 				setVisible(false);
 			}
@@ -82,7 +84,7 @@ public class HomeScreen extends JFrame {
 		JButton btnNewButton_1 = new JButton("Search Images by User");
 		btnNewButton_1.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				SearchScreen ss = new SearchScreen(0, that);
+				SearchScreen ss = new SearchScreen(in, out, commandOut, 0, that);
 				ss.setVisible(true);
 				setVisible(false);
 			}

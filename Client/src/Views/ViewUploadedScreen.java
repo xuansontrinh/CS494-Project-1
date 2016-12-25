@@ -17,8 +17,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
-import java.net.Socket;
-import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -53,11 +51,12 @@ public class ViewUploadedScreen extends JFrame {
 	/**
 	 * Create the frame.
 	 */
-	public ViewUploadedScreen(String username, JFrame parent) {
+	public ViewUploadedScreen(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut, String username,
+			JFrame parent) {
 		setResizable(false);
 		_username = username;
 		_parent = parent;
-		
+
 		addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentHidden(ComponentEvent e) {
@@ -80,34 +79,28 @@ public class ViewUploadedScreen extends JFrame {
 		scrollPane.setBounds(10, 36, 774, 524);
 		contentPane.add(scrollPane);
 
-		loadImages();
+		loadImages(in, out, commandOut);
 	}
 
-	private void loadImages() {
-		String hostName = "127.0.0.1";
-		int portNumber = 9000;
+	private void loadImages(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut) {
 
-		try (Socket server = new Socket(hostName, portNumber);
-				ObjectInputStream in = new ObjectInputStream(server.getInputStream());
-				ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream());
-				PrintWriter commandOut = new PrintWriter(server.getOutputStream(), true);) {
+		commandOut.println("FetchImages");
 
-			commandOut.println("FetchImages");
-
+		try {
 			if (in.readBoolean()) {
 				commandOut.println(_username);
 
-//				GroupLayout groupLayout = new GroupLayout(pane);
+				// GroupLayout groupLayout = new GroupLayout(pane);
 
-//				contentPane.setLayout(groupLayout);
-//				SequentialGroup horizontal = groupLayout.createSequentialGroup();
-//				ParallelGroup vertical = groupLayout.createParallelGroup();
+				// contentPane.setLayout(groupLayout);
+				// SequentialGroup horizontal = groupLayout.createSequentialGroup();
+				// ParallelGroup vertical = groupLayout.createParallelGroup();
 
 				String path = "Upload/" + _username;
 				if (!Files.exists(Paths.get(path)))
 					Files.createDirectories(Paths.get(path));
 				try {
-					
+
 					int count = 0;
 					while (in.readBoolean()) {
 						Image img = (Image) in.readObject();
@@ -118,31 +111,32 @@ public class ViewUploadedScreen extends JFrame {
 						JLabel image = new JLabel("");
 						image.setBounds(0, 0, 100, 100);
 						image.setHorizontalAlignment(JLabel.CENTER);
-						
-						String fileName = "Upload/" + _username + "/" + img.get_imageName();						
-						ImageIcon i = new ImageIcon(fileName); // create the image icon
-						java.awt.Image tmp = i.getImage(); // get the image to transform
+
+						String fileName = "Upload/" + _username + "/" + img.get_imageName();
+						ImageIcon i = new ImageIcon(fileName); // create the image
+																// icon
+						java.awt.Image tmp = i.getImage(); // get the image to
+															// transform
 						double ratio = (double) image.getHeight() / tmp.getHeight(null);
 						tmp = tmp.getScaledInstance((int) (tmp.getWidth(null) * ratio), image.getHeight(),
 								java.awt.Image.SCALE_SMOOTH); // scale the image
-						
+
 						image.setIcon(new ImageIcon(tmp)); // set image icon
-						
+
 						pane.add(image);
-//						horizontal.addComponent(image);
-//						vertical.addComponent(image);
+						// horizontal.addComponent(image);
+						// vertical.addComponent(image);
 
 						out.writeBoolean(true);
 						out.flush();
-						
+
 						++count;
 					}
 
 					lblImagesUploaded.setText("Images uploade by " + _username + ": " + count);
-//					groupLayout.setHorizontalGroup(horizontal);
-//					groupLayout.setVerticalGroup(vertical);
-					
-					
+					// groupLayout.setHorizontalGroup(horizontal);
+					// groupLayout.setVerticalGroup(vertical);
+
 				} catch (Exception e) {
 					System.err.println(e);
 				}
@@ -150,13 +144,9 @@ public class ViewUploadedScreen extends JFrame {
 			} else {
 				System.out.println("Server not accepting fetch request.");
 			}
-
-		} catch (UnknownHostException e) {
-			System.err.println("Don't know about host " + hostName);
-			System.exit(1);
 		} catch (IOException e) {
-			System.err.println("Couldn't get I/O for the connection to " + hostName);
-			System.exit(1);
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 }

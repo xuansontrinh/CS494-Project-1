@@ -25,8 +25,6 @@ public class User implements Serializable
 	
 	public boolean checkPassword(String password)
 	{
-		System.out.println(password);
-		System.out.println(_password);
 		return _password.equals(password);
 	}
 	

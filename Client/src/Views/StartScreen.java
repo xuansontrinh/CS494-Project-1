@@ -1,13 +1,14 @@
 package Views;
 
-import java.awt.EventQueue;
-
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.JButton;
 import java.awt.event.ActionListener;
+import java.io.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class StartScreen extends JFrame {
 
@@ -21,22 +22,28 @@ public class StartScreen extends JFrame {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-		EventQueue.invokeLater(new Runnable() {
-			public void run() {
-				try {
-					StartScreen frame = new StartScreen();
-					frame.setVisible(true);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		});
+//		EventQueue.invokeLater(new Runnable() {
+//			public void run() {
+//				try {
+//					StartScreen frame = new StartScreen();
+//					frame.setVisible(true);
+//				} catch (Exception e) {
+//					e.printStackTrace();
+//				}
+//			}
+//		});
 	}
 
 	/**
 	 * Create the frame.
 	 */
-	public StartScreen() {
+	public StartScreen(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut) {
+		addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				System.out.println("now closing");
+			}
+		});
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setBounds(100, 100, 450, 300);
 		contentPane = new JPanel();
@@ -47,7 +54,7 @@ public class StartScreen extends JFrame {
 		JButton btnLogIn = new JButton("Log in");
 		btnLogIn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				LogInScreen lis = new LogInScreen();
+				LogInScreen lis = new LogInScreen(in, out, commandOut);
 				lis.setVisible(true);
 				setVisible(false);
 				dispose();
@@ -59,7 +66,7 @@ public class StartScreen extends JFrame {
 		JButton btnSignUp = new JButton("Sign up");
 		btnSignUp.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				SignUpScreen sus = new SignUpScreen();
+				SignUpScreen sus = new SignUpScreen(in, out, commandOut);
 				sus.setVisible(true);
 				setVisible(false);
 				dispose();

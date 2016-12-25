@@ -1,7 +1,6 @@
 package Views;
 
 import java.io.*;
-import java.net.*;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -32,22 +31,22 @@ public class SignUpScreen extends JFrame {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-//		EventQueue.invokeLater(new Runnable() {
-//			public void run() {
-//				try {
-//					SignUpScreen frame = new SignUpScreen();
-//					frame.setVisible(true);
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		});
+		// EventQueue.invokeLater(new Runnable() {
+		// public void run() {
+		// try {
+		// SignUpScreen frame = new SignUpScreen();
+		// frame.setVisible(true);
+		// } catch (Exception e) {
+		// e.printStackTrace();
+		// }
+		// }
+		// });
 	}
 
 	/**
 	 * Create the frame.
 	 */
-	public SignUpScreen() {
+	public SignUpScreen(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut) {
 		setTitle("Sign up");
 		setResizable(false);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -77,7 +76,7 @@ public class SignUpScreen extends JFrame {
 		JButton btnNewButton = new JButton("Sign up");
 		btnNewButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				onSignUp(username.getText(), String.valueOf(password.getPassword()));
+				onSignUp(in, out, commandOut, username.getText(), String.valueOf(password.getPassword()));
 			}
 		});
 
@@ -85,62 +84,43 @@ public class SignUpScreen extends JFrame {
 		contentPane.add(btnNewButton);
 	}
 
-	private void onSignUp(String _username, String _password) {
-		String hostName = "127.0.0.1";
-		int portNumber = 9000;
+	private void onSignUp(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut, String _username,
+			String _password) {
+		// get object from server; blocks until object arrives.
+		User user = new User(_username, _password);
 
-		try (Socket server = new Socket(hostName, portNumber);
-				ObjectInputStream in = new ObjectInputStream(server.getInputStream());
-				ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream());
-				PrintWriter commandOut = new PrintWriter(server.getOutputStream(), true);) {
+		try {
+			commandOut.println("SignUp");
 
-			System.out.println("Client: connected!");
+			if (in.readBoolean()) {
+				// writeUnshared() is like writeObject(), but always writes
+				// a new copy of the object. The flush (optional) forces the
+				// bytes out right now.
+				out.writeUnshared(user);
+				out.flush();
 
-			// get object from server; blocks until object arrives.
-			User user = new User(_username, _password);
+				int response = in.readInt();
 
-			try {
-				commandOut.println("SignUp");
-
-				if (in.readBoolean()) {
-					// writeUnshared() is like writeObject(), but always writes
-					// a new copy of the object. The flush (optional) forces the
-					// bytes out right now.
-					out.writeUnshared(user);
-					out.flush();
-
-					int response = in.readInt();
-
-					if (response == 1) {
-						System.out.println("Successfully signed up.");
-						HomeScreen us = new HomeScreen(user.getName());
-						us.setVisible(true);
-						setVisible(false);
-						dispose();
-					} else {
-						System.out.println("Username existed.");
-						JOptionPane pane = new JOptionPane();
-						pane.setMessage("Username existed.");
-						JDialog dialog = pane.createDialog(null, "Alert");
-						dialog.setVisible(true);
-						server.close();
-					}
-
+				if (response == 1) {
+					System.out.println("Successfully signed up.");
+					HomeScreen us = new HomeScreen(in, out, commandOut, user.getName());
+					us.setVisible(true);
+					setVisible(false);
+					dispose();
 				} else {
-					System.out.println("Server not accepting sign up request.");
+					System.out.println("Username existed.");
+					JOptionPane pane = new JOptionPane();
+					pane.setMessage("Username existed.");
+					JDialog dialog = pane.createDialog(null, "Alert");
+					dialog.setVisible(true);
 				}
-				
-			} catch (Exception ex) {
-				ex.printStackTrace();
+
+			} else {
+				System.out.println("Server not accepting sign up request.");
 			}
-		} catch (UnknownHostException e) {
-			System.err.println("Don't know about host " + hostName);
-			System.exit(1);
-		} catch (IOException e) {
-			System.err.println("Couldn't get I/O for the connection to " + hostName);
-			System.exit(1);
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
 		}
-		
-		System.out.println("End onSignUp");
 	}
 }

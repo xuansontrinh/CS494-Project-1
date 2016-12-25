@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
-import java.net.Socket;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -47,7 +46,7 @@ public class UploadScreen extends JFrame {
 	private JPanel contentPane;
 	private JTextField filePathField;
 	private File _selectedFile;
-	
+
 	private String _username;
 	private JFrame _parent;
 
@@ -55,32 +54,33 @@ public class UploadScreen extends JFrame {
 	 * Launch the application.
 	 */
 	public static void main(String[] args) {
-//		EventQueue.invokeLater(new Runnable() {
-//			public void run() {
-//				try {
-//					UploadScreen frame = new UploadScreen("");
-//					frame.setVisible(true);
-//				} catch (Exception e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		});
+		// EventQueue.invokeLater(new Runnable() {
+		// public void run() {
+		// try {
+		// UploadScreen frame = new UploadScreen("");
+		// frame.setVisible(true);
+		// } catch (Exception e) {
+		// e.printStackTrace();
+		// }
+		// }
+		// });
 	}
 
 	/**
 	 * Create the frame.
 	 */
-	public UploadScreen(String username, JFrame parent) {
+	public UploadScreen(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut, String username,
+			JFrame parent) {
 		_parent = parent;
 		_username = username;
-		
+
 		addComponentListener(new ComponentAdapter() {
 			@Override
 			public void componentHidden(ComponentEvent e) {
 				_parent.setVisible(true);
 			}
 		});
-		
+
 		setResizable(false);
 		setTitle("Upload");
 		setBounds(100, 100, 800, 600);
@@ -116,7 +116,8 @@ public class UploadScreen extends JFrame {
 					_selectedFile = chooser.getSelectedFile();
 					String fileName = chooser.getSelectedFile().getAbsolutePath();
 					filePathField.setText(fileName);
-					ImageIcon i = new ImageIcon(fileName); // create the image icon
+					ImageIcon i = new ImageIcon(fileName); // create the image
+															// icon
 					Image tmp = i.getImage(); // get the image to transform
 					double ratio = (double) image.getHeight() / tmp.getHeight(null);
 					tmp = tmp.getScaledInstance((int) (tmp.getWidth(null) * ratio), image.getHeight(),
@@ -140,11 +141,11 @@ public class UploadScreen extends JFrame {
 		themesTxtArea.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		themesTxtArea.setBounds(590, 67, 194, 205);
 		contentPane.add(themesTxtArea);
-		
+
 		JLabel lblNote = new JLabel("Note");
 		lblNote.setBounds(590, 286, 46, 14);
 		contentPane.add(lblNote);
-		
+
 		JTextArea note = new JTextArea();
 		note.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		note.setBounds(590, 308, 194, 205);
@@ -153,7 +154,7 @@ public class UploadScreen extends JFrame {
 		JButton btnNewButton = new JButton("Upload");
 		btnNewButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				uploadImage(themesTxtArea.getText().split("\n"), note.getText());
+				uploadImage(in, out, commandOut, themesTxtArea.getText().split("\n"), note.getText());
 			}
 		});
 		btnNewButton.setIconTextGap(8);
@@ -162,76 +163,70 @@ public class UploadScreen extends JFrame {
 		btnNewButton.setBounds(10, 524, 774, 36);
 		contentPane.add(btnNewButton);
 	}
-	
-	public void uploadImage(String[] themes, String note)
-	{
-		String hostName = "127.0.0.1";
-		int portNumber = 9000;
-		// === Upload image to server
-		// Read image to byte array
+
+	public void uploadImage(ObjectInputStream in, ObjectOutputStream out, PrintWriter commandOut, String[] themes,
+			String note) {
+		
+		if (_selectedFile == null)
+		{
+			JOptionPane pane = new JOptionPane();
+			pane.setMessage("Please choose an image.");
+			JDialog dialog = pane.createDialog(null, "Alert");
+			dialog.setVisible(true);
+			return;
+		}
 		
 		try {
 			File file = _selectedFile.getAbsoluteFile();
 			byte[] fileContent;
 			fileContent = Files.readAllBytes(file.toPath());
-			
+
 			BufferedImage bimg = ImageIO.read(file);
-			
+
 			// Create serializable image
-			Common.Image image = new Common.Image(_selectedFile.getName(), themes, _username, note, bimg.getWidth(), bimg.getHeight(), fileContent);
-			
-			try (Socket server = new Socket(hostName, portNumber);
-					ObjectInputStream in = new ObjectInputStream(server.getInputStream());
-					ObjectOutputStream out = new ObjectOutputStream(server.getOutputStream());
-					PrintWriter commandOut = new PrintWriter(server.getOutputStream(), true);) {
-				
-				commandOut.println("UploadImage");
+			Common.Image image = new Common.Image(_selectedFile.getName(), themes, _username, note, bimg.getWidth(),
+					bimg.getHeight(), fileContent);
 
-				if (in.readBoolean()) {
-					// writeUnshared() is like writeObject(), but always writes
-					// a new copy of the object. The flush (optional) forces the
-					// bytes out right now.
-					out.writeUnshared(image);
-					out.flush();
+			commandOut.println("UploadImage");
 
-					int response = in.readInt();
+			if (in.readBoolean()) {
+				// writeUnshared() is like writeObject(), but always writes
+				// a new copy of the object. The flush (optional) forces the
+				// bytes out right now.
+				out.writeUnshared(image);
+				out.flush();
 
-					if (response == 1) {
-						System.out.println("Successfully uploaded image.");
-						JOptionPane pane = new JOptionPane();
-						pane.setMessage("Image uploaded successfully.");
-						JDialog dialog = pane.createDialog(null, "Alert");
-						dialog.setVisible(true);
-						server.close();
-						
-						String path = "Upload/";
-						if (!Files.exists(Paths.get(path)))
-							Files.createDirectories(Paths.get(path));
-						try (BufferedWriter bw = Files.newBufferedWriter(
-								FileSystems.getDefault().getPath("Upload/" + _username + ".txt"), CREATE, APPEND)) {
-							bw.write(image.toString());
-						} catch (IOException x) {
-							System.err.format("IOException: %s%n", x);
-						}
-						
-					} else {
-						System.out.println("Failed to upload image.");
-						JOptionPane pane = new JOptionPane();
-						pane.setMessage("Failed to upload image.");
-						JDialog dialog = pane.createDialog(null, "Alert");
-						dialog.setVisible(true);
-						server.close();
+				int response = in.readInt();
+
+				if (response == 1) {
+					System.out.println("Successfully uploaded image.");
+					JOptionPane pane = new JOptionPane();
+					pane.setMessage("Image uploaded successfully.");
+					JDialog dialog = pane.createDialog(null, "Alert");
+					dialog.setVisible(true);
+
+					String path = "Upload/";
+					if (!Files.exists(Paths.get(path)))
+						Files.createDirectories(Paths.get(path));
+					try (BufferedWriter bw = Files.newBufferedWriter(
+							FileSystems.getDefault().getPath("Upload/" + _username + ".txt"), CREATE, APPEND)) {
+						bw.write(image.toString());
+					} catch (IOException x) {
+						System.err.format("IOException: %s%n", x);
 					}
-					
+
 				} else {
-					System.out.println("Server not image upload sign up request.");
+					System.out.println("Failed to upload image.");
+					JOptionPane pane = new JOptionPane();
+					pane.setMessage("Failed to upload image.");
+					JDialog dialog = pane.createDialog(null, "Alert");
+					dialog.setVisible(true);
 				}
-				
-			} catch (Exception ex) {
-				ex.printStackTrace();
+
+			} else {
+				System.out.println("Server not image upload sign up request.");
 			}
-			
-			
+
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
